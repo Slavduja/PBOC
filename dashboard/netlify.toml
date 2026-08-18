@@ -1,0 +1,12 @@
+# Netlify config — place the site's base directory at this "dashboard" folder.
+# If you connect the whole repo (dashboard nested under it), set Base directory
+# to "dashboard" in Netlify UI, or move this file to the repo root and add
+#   base = "dashboard"
+[build]
+  command = "npm run build:static"
+  publish = "out"
+
+[build.environment]
+  NODE_VERSION = "20"
+  # Netlify serves at the site root, so no base path:
+  NEXT_PUBLIC_BASE_PATH = ""

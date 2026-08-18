@@ -1,0 +1,68 @@
+# Daily PBoC data refresh.
+# Scrapes the latest PBoC operations, rebuilds the dashboard data, and commits it.
+# Netlify (connected to this repo) then auto-deploys the updated snapshot.
+#
+# Requires the repo root to be the whole PBOC_liquidity project (Python scripts +
+# dashboard/). The scrape cache is persisted between runs via actions/cache, so
+# only new announcements are fetched each day (a thin/empty cache triggers a
+# one-time full backfill).
+name: Daily PBoC data refresh
+
+on:
+  schedule:
+    - cron: "30 1 * * 1-5" # 01:30 UTC, Mon–Fri (~09:30 Beijing)
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+concurrency:
+  group: pboc-refresh
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - run: pip install -r requirements.txt
+
+      - name: Restore scrape cache
+        uses: actions/cache@v4
+        with:
+          path: cache
+          key: pboc-cache-${{ github.run_id }}
+          restore-keys: |
+            pboc-cache-
+
+      - name: Scrape (incremental; full backfill if cache is thin)
+        run: |
+          count=$(ls cache/*.html 2>/dev/null | wc -l | tr -d ' ')
+          echo "cache files present: $count"
+          if [ "${count:-0}" -lt 1500 ]; then
+            echo "Thin cache -> one-time full backfill (~20 min)"
+            python pboc_scraper.py --max-pages 90
+          else
+            python pboc_scraper.py --incremental
+          fi
+
+      - name: Rebuild dashboard data
+        run: python export_dashboard_data.py
+
+      - name: Commit refreshed data
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add dashboard/public/dashboard_data.json \
+                  output/operations.csv output/pboc_liquidity.csv output/pboc_liquidity_tv.csv
+          if git diff --cached --quiet; then
+            echo "No data changes today."
+          else
+            git commit -m "chore(data): daily PBoC refresh $(date -u +%F)"
+            git push
+          fi

@@ -1,0 +1,19 @@
+# Scrape cache — persisted across CI runs via actions/cache, not committed (~50MB)
+cache/
+
+# logs / scratch
+output/*.log
+output/compare.png
+output/signals.png
+
+# python
+__pycache__/
+*.pyc
+
+# next.js dashboard
+dashboard/node_modules/
+dashboard/.next/
+dashboard/out/
+dashboard/.api_hidden/
+
+.DS_Store
