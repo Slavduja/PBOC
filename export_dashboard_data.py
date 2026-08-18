@@ -73,8 +73,11 @@ bs_bn = bs["bs_yi"] / 10.0
 
 
 def bs_change(periods):
+    # limit_area="inside" fills only BETWEEN known monthly points — it does NOT
+    # extrapolate past the last real balance-sheet date, so the truth line stops
+    # where the data stops (no misleading flat segment).
     return (bs_bn - bs_bn.shift(periods)).reindex(FULL.union(bs_bn.index)) \
-        .sort_index().interpolate(method="time").reindex(FULL)
+        .sort_index().interpolate(method="time", limit_area="inside").reindex(FULL)
 
 
 frame["cncbbs"] = bs_change(12)          # 12-month
@@ -83,6 +86,16 @@ frame["cncbbs_roc3m"] = bs_change(3)     # 3-month
 # weekly, rounded, drop the leading year with no YoY
 weekly = frame.resample("W-FRI").last().round(0)
 weekly = weekly.loc[weekly.index >= "2020-06-01"]
+
+# Market overlays (plotted on a secondary right axis): weekly close, own scale.
+try:
+    mk = pd.read_csv("output/markets.csv", parse_dates=["date"]).set_index("date")
+    mk_w = mk.resample("W-FRI").last().reindex(weekly.index)
+    for c in mk.columns:
+        weekly[c] = mk_w[c].round(1)
+    print(f"  markets merged: {list(mk.columns)}")
+except FileNotFoundError:
+    print("  no markets.csv (run fetch_markets.py) — overlays will be empty")
 
 records = [{"date": d.strftime("%Y-%m-%d"),
             **{c: (None if pd.isna(v) else float(v)) for c, v in row.items()}}
@@ -110,6 +123,10 @@ meta = {
     "measures": [
         {"key": "yoy", "suffix": "", "label": "12-month (YoY)", "short": "YoY"},
         {"key": "roc3m", "suffix": "_roc3m", "label": "3-month ROC", "short": "3M ROC"},
+    ],
+    "markets": [
+        {"key": "sp500", "label": "S&P 500", "color": "#2563eb"},
+        {"key": "btcusd", "label": "BTC / USD", "color": "#f7931a"},
     ],
     "unit": "RMB bn",
     "asof": END.strftime("%Y-%m-%d"),

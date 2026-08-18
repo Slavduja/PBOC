@@ -20,6 +20,7 @@ export default function Dashboard() {
   const [sel, setSel] = useState(null);
   const [showTruth, setShowTruth] = useState(true);
   const [measure, setMeasure] = useState("yoy"); // "yoy" | "roc3m"
+  const [overlay, setOverlay] = useState("none"); // "none" | "sp500" | "btcusd"
   const [refreshing, setRefreshing] = useState(false);
   const [status, setStatus] = useState(null); // { ok, text }
 
@@ -74,7 +75,13 @@ export default function Dashboard() {
           any = true;
         }
       });
-      return { date: row.date, index: any ? s : null, cncbbs: row["cncbbs" + sfx] };
+      return {
+        date: row.date,
+        index: any ? s : null,
+        cncbbs: row["cncbbs" + sfx],
+        sp500: row.sp500 ?? null,
+        btcusd: row.btcusd ?? null,
+      };
     });
   }, [data, sel, sfx]);
 
@@ -85,6 +92,7 @@ export default function Dashboard() {
   const measures = meta.measures || [{ key: "yoy", suffix: "", short: "YoY" }];
   const measureShort = (measures.find((m) => m.key === measure) || measures[0]).short;
 
+  const markets = meta.markets || [];
   const indexLines = [{ key: "index", label: "Composed index", color: "#111827", width: 2.6 }];
   if (showTruth)
     indexLines.push({
@@ -93,6 +101,15 @@ export default function Dashboard() {
       color: "#c9974a",
       dashed: true,
       width: 2,
+    });
+  const overlayMkt = markets.find((m) => m.key === overlay);
+  if (overlayMkt)
+    indexLines.push({
+      key: overlayMkt.key,
+      label: overlayMkt.label,
+      color: overlayMkt.color,
+      width: 2,
+      axis: "right",
     });
 
   const latestIndex = lastNonNull(combined, "index");
@@ -183,9 +200,18 @@ export default function Dashboard() {
             )}
           </div>
           <div className="controls">
+            <label className="overlay-select">
+              Overlay market
+              <select value={overlay} onChange={(e) => setOverlay(e.target.value)}>
+                <option value="none">None</option>
+                {markets.map((m) => (
+                  <option key={m.key} value={m.key}>{m.label}</option>
+                ))}
+              </select>
+            </label>
             <label className="chk">
               <input type="checkbox" checked={showTruth} onChange={() => setShowTruth(!showTruth)} />
-              Overlay balance-sheet truth
+              Balance-sheet truth
             </label>
           </div>
         </div>

@@ -51,6 +51,9 @@ jobs:
             python pboc_scraper.py --incremental
           fi
 
+      - name: Fetch market overlays (BTC + S&P 500)
+        run: python fetch_markets.py || echo "market fetch had issues; continuing with existing data"
+
       - name: Rebuild dashboard data
         run: python export_dashboard_data.py
 
@@ -59,7 +62,8 @@ jobs:
           git config user.name  "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add dashboard/public/dashboard_data.json \
-                  output/operations.csv output/pboc_liquidity.csv output/pboc_liquidity_tv.csv
+                  output/operations.csv output/pboc_liquidity.csv output/pboc_liquidity_tv.csv \
+                  output/markets.csv
           if git diff --cached --quiet; then
             echo "No data changes today."
           else

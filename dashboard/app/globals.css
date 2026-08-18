@@ -212,7 +212,27 @@ body {
 .panel-latest b { color: var(--ink); font-size: 17px; }
 .controls { margin-left: auto; display: flex; gap: 16px; align-items: center; }
 
+.overlay-select {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.overlay-select select {
+  font-family: var(--sans);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink);
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  padding: 5px 8px;
+  cursor: pointer;
+}
+
 .legend { display: flex; gap: 16px; flex-wrap: wrap; margin: 6px 2px 0; font-size: 12px; color: var(--muted); }
+.chart .rtick { font-weight: 600; }
 .legend span { display: inline-flex; align-items: center; gap: 6px; }
 .legend .ln { width: 16px; height: 3px; border-radius: 2px; }
 
