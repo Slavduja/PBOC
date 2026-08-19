@@ -58,24 +58,21 @@ def fetch_btc() -> pd.Series | None:
 
 
 def fetch_sp500() -> pd.Series | None:
-    """Yahoo chart API, fall back to FRED CSV."""
-    p1 = int(datetime.fromisoformat(START).replace(tzinfo=timezone.utc).timestamp())
-    p2 = int(datetime.now(timezone.utc).timestamp())
-    # 1) Yahoo
+    """yfinance (does Yahoo's cookie/crumb handshake + retries), fall back to FRED CSV."""
+    # 1) yfinance — same method as macrosimple_engine/providers/yahoo.py.
+    #    A raw GET to Yahoo's API gets 429'd; yfinance handles the crumb dance.
     try:
-        url = ("https://query1.finance.yahoo.com/v8/finance/chart/%5EGSPC"
-               f"?period1={p1}&period2={p2}&interval=1d")
-        r = requests.get(url, headers=UA, timeout=30)
-        r.raise_for_status()
-        res = r.json()["chart"]["result"][0]
-        ts = res["timestamp"]
-        close = res["indicators"]["quote"][0]["close"]
-        s = pd.Series(close, index=pd.to_datetime(ts, unit="s")).dropna()
-        s.index = s.index.normalize()
-        return s.rename("sp500")
+        import yfinance as yf  # lazy import
+        for tk in ("^GSPC", "SPY"):
+            df = yf.download(tk, start=START, auto_adjust=True, progress=False, threads=False)
+            if df is not None and len(df):
+                c = df["Close"]
+                c = c.iloc[:, 0] if hasattr(c, "columns") else c  # unwrap single-ticker MultiIndex
+                c.index = pd.to_datetime(c.index)
+                return c.rename("sp500").dropna()
     except Exception as e:  # noqa: BLE001
-        print(f"  SP500 via Yahoo failed ({e}); trying FRED…")
-    # 2) FRED
+        print(f"  SP500 via yfinance failed ({e}); trying FRED…")
+    # 2) FRED fallback
     try:
         r = requests.get("https://fred.stlouisfed.org/graph/fredgraph.csv?id=SP500",
                          headers=UA, timeout=30)
